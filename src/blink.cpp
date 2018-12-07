@@ -11,7 +11,7 @@
 #include "freertos/task.h"
 #include "driver/gpio.h"
 #include "sdkconfig.h"
-#include "server/bluetooth/BTServer.hpp"
+#include "server/WiFiAP/WiFiAP.hpp"
 
 /* Can run 'make menuconfig' to choose the GPIO to blink,
    or you can edit the following line and set a number here.
@@ -45,7 +45,7 @@ void blink_task(void *pvParameter)
 
 void app_main(void)
 {
-    BTServer* btServer = new BTServer();
+    WiFiAp* btServer = new WiFiAp();
     btServer->start();
     xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE, NULL, 5, NULL);
 }
