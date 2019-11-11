@@ -1,39 +1,6 @@
-#include <stdint.h>
-#include <string.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include "nvs.h"
-#include "nvs_flash.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_log.h"
-#include "esp_bt.h"
-#include "esp_bt_main.h"
-#include "esp_gap_bt_api.h"
-#include "esp_bt_device.h"
-#include "esp_spp_api.h"
-
-#include "time.h"
-#include "sys/time.h"
-
 #include "BluetoothAP.hpp"
 
-#define SPP_TAG "BT AP"
-#define SPP_SERVER_NAME "LEDEqualizerServer"
-#define EXCAMPLE_DEVICE_NAME "LEDEqualizer"
-#define SPP_SHOW_DATA 1
-#define SPP_SHOW_SPEED 1
-#define SPP_SHOW_MODE SPP_SHOW_SPEED    /*Choose show mode: show data or speed*/
-
-static const esp_spp_mode_t esp_spp_mode = ESP_SPP_MODE_CB;
-
-static struct timeval time_new, time_old;
-static long data_num = 0;
-
-static const esp_spp_sec_t sec_mask = ESP_SPP_SEC_NONE;
-static const esp_spp_role_t role_slave = ESP_SPP_ROLE_SLAVE;
-
-static void print_speed(void)
+void BluetoothAP::print_speed(void)
 {
     float time_old_s = time_old.tv_sec + time_old.tv_usec / 1000000.0;
     float time_new_s = time_new.tv_sec + time_new.tv_usec / 1000000.0;
@@ -45,14 +12,14 @@ static void print_speed(void)
     time_old.tv_usec = time_new.tv_usec;
 }
 
-static void esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
+void BluetoothAP::esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
 {
     switch (event) {
     case ESP_SPP_INIT_EVT:
         ESP_LOGI(SPP_TAG, "ESP_SPP_INIT_EVT");
         esp_bt_dev_set_device_name(EXCAMPLE_DEVICE_NAME);
         esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);
-        esp_spp_start_srv(sec_mask,role_slave, 0, SPP_SERVER_NAME);
+        esp_spp_start_srv(sec_mask, role_slave, 0, SPP_SERVER_NAME);
         break;
     case ESP_SPP_DISCOVERY_COMP_EVT:
         ESP_LOGI(SPP_TAG, "ESP_SPP_DISCOVERY_COMP_EVT");
@@ -90,14 +57,14 @@ static void esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
         break;
     case ESP_SPP_SRV_OPEN_EVT:
         ESP_LOGI(SPP_TAG, "ESP_SPP_SRV_OPEN_EVT");
-        gettimeofday(&time_old, NULL);
+        //gettimeofday(&time_old, NULL);
         break;
     default:
         break;
     }
 }
 
-void esp_bt_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
+void BluetoothAP::esp_bt_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
 {
     switch (event) {
     case ESP_BT_GAP_AUTH_CMPL_EVT:{
@@ -166,12 +133,12 @@ bool BluetoothAP::start()
         return false;
     }
 
-    if ((ret = esp_bt_gap_register_callback(esp_bt_gap_cb)) != ESP_OK) {
+    if ((ret = esp_bt_gap_register_callback(this->esp_bt_gap_cb)) != ESP_OK) {
         ESP_LOGE(SPP_TAG, "%s gap register failed: %s\n", __func__, esp_err_to_name(ret));
         return false;
     }
 
-    if ((ret = esp_spp_register_callback(esp_spp_cb)) != ESP_OK) {
+    if ((ret = esp_spp_register_callback(this->esp_spp_cb)) != ESP_OK) {
         ESP_LOGE(SPP_TAG, "%s spp register failed: %s\n", __func__, esp_err_to_name(ret));
         return false;
     }
