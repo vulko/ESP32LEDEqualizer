@@ -1,124 +1,71 @@
 #include "LedController.hpp"
+#include <string.h>
+#include <esp_log.h>
 
-#include "string.h"
 
-#include "stdio.h"
+LedController::LedController()
+    : pLedMatrix(new LedMatrix()) {
+    // initialize
+    mLogicZero.level0 = 1;
+    mLogicZero.duration0 = 32;
+    mLogicZero.level1 = 0;
+    mLogicZero.duration1 = 68;
 
-#ifndef CONFIG_WS2812B_INVERTED
-#define CONFIG_WS2812B_INVERTED 0
-#endif
+    mLogicOne.level0 = 1;
+    mLogicOne.duration0 = 64;
+    mLogicOne.level1 = 0;
+    mLogicOne.duration1 = 36;
 
-#ifndef CONFIG_WS2812B_USE_PL9823
-#define CONFIG_WS2812B_USE_PL9823 0
-#endif
-
-#if CONFIG_WS2812B_INVERTED == 0
-#if CONFIG_WS2812B_USE_PL9823 == 0
-static rmt_item32_t wsLogicZero;
-static rmt_item32_t wsLogicOne;
-#else
-static const rmt_item32_t wsLogicZero = {.level0 = 1, .duration0 = 28, .level1 = 0, .duration1 = 109};
-static const rmt_item32_t wsLogicOne = {.level0 = 1, .duration0 = 109, .level1 = 0, .duration1 = 28};
-#endif
-
-#else
-#if CONFIG_WS2812B_USE_PL9823 == 0
-static const rmt_item32_t wsLogicZero = {.level0 = 0, .duration0 = 32, .level1 = 1, .duration1 = 68};
-static const rmt_item32_t wsLogicOne = {.level0 = 0, .duration0 = 64, .level1 = 1, .duration1 = 36};
-#else
-static const rmt_item32_t wsLogicZero = {.level0 = 0, .duration0 = 28, .level1 = 1, .duration1 = 109};
-static const rmt_item32_t wsLogicOne = {.level0 = 0, .duration0 = 109, .level1 = 1, .duration1 = 28};
-#endif
-
-#endif
-
-static rmt_channel_t channel;
-static unsigned int size;
-static rmt_item32_t* items;
-
-void WS2812B_init(rmt_channel_t chan, gpio_num_t gpio, unsigned int psize)
-{
-    wsLogicZero.level0 = 1;
-    wsLogicZero.duration0 = 32;
-    wsLogicZero.level1 = 0;
-    wsLogicZero.duration1 = 68;
-
-    wsLogicOne.level0 = 1;
-    wsLogicOne.duration0 = 64;
-    wsLogicOne.level1 = 0;
-    wsLogicOne.duration1 = 36;
-
-	channel = chan;
-	size = psize;
-	items = NULL;
-
-	if(!size)
-	{
-		printf("%s: %d Invalid size 0!\n", __FILE__, __LINE__);
-		return;
-	}
-
-	if(NULL == (items = (rmt_item32_t*) malloc(sizeof(rmt_item32_t) * size * 24)))
-	{
-		printf("%s: %d Unable to allocate space!\n", __FILE__, __LINE__);
-		return;
-	}
-
-	rmt_config_t rmt_tx;
+    // setup RMT driver
+    rmt_config_t rmt_tx;
 	memset(&rmt_tx, 0, sizeof(rmt_config_t));
 
-	rmt_tx.channel = channel;
-	rmt_tx.gpio_num = gpio;
+	rmt_tx.channel = mChannel;
+	rmt_tx.gpio_num = GPIO_NUM_5;
 	rmt_tx.mem_block_num = 1;
 	rmt_tx.clk_div = 1;
 	rmt_tx.tx_config.idle_output_en = 1;
-#if CONFIG_WS2812B_INVERTED == 1
-	rmt_tx.tx_config.idle_level = RMT_IDLE_LEVEL_HIGH;
-#endif
 
 	rmt_config(&rmt_tx);
 	rmt_driver_install(rmt_tx.channel, 0, 0);
+
+    // init raw led data
+    if (NULL == (pRawData = (rmt_item32_t*) malloc(sizeof(rmt_item32_t) * pLedMatrix->getSize() * 24)))
+	{
+		ESP_LOGE(LED_CONTROLLER_TAG, "%s: %d Unable to allocate space!\n", __FILE__, __LINE__);
+		return;
+	}
 }
 
-void WS2812B_setLeds(wsRGB_t* data, unsigned int size)
-{
-	unsigned int itemCnt = 0;
+LedController::~LedController() {
+    rmt_driver_uninstall(mChannel);
+	free(pRawData);
+    delete pLedMatrix;
+}
 
-	for(int i = 0; i < size; i++)
-		for(int j = 0; j < 24; j++)
-		{
-			if(j < 8)
-			{
-#if CONFIG_WS2812B_USE_PL9823 == 0
-				if(data[i].g & (1<<(7-j))) items[itemCnt++] = wsLogicOne;
-#else
-				if(data[i].r & (1<<(7-j))) items[itemCnt++] = wsLogicOne;
-#endif
-				else items[itemCnt++] = wsLogicZero;
-			}
+void LedController::setPixelColor(MatrixDimenType xPos, MatrixDimenType yPos, ColorType red, ColorType green, ColorType blue) {
+    pLedMatrix->setPixelColor(xPos, yPos, red, green, blue);
+}
 
-			else if (j < 16)
-			{
-#if CONFIG_WS2812B_USE_PL9823 == 0
-				if(data[i].r & (1<<(7 - (j%8) ))) items[itemCnt++] = wsLogicOne;
-#else
-				if(data[i].g & (1<<(7 - (j%8) ))) items[itemCnt++] = wsLogicOne;
-#endif
-				else items[itemCnt++] = wsLogicZero;
-			}
-			else
-			{
-				if(data[i].b & (1<<( 7 - (j%8) ))) items[itemCnt++] = wsLogicOne;
-				else items[itemCnt++] = wsLogicZero;
-			}
+void LedController::update() {
+    unsigned int itemCnt = 0;
+	unsigned int dataSize = pLedMatrix->getSize();
+    PixelData* data = pLedMatrix->getData();
 
+	for(int i = 0; i < dataSize; i++) {
+		for(int j = 0; j < 24; j++) {
+			if(j < 8) {
+				if(data[i].mGreen & (1<<(7-j))) pRawData[itemCnt++] = mLogicOne;
+				else pRawData[itemCnt++] = mLogicZero;
+			} else if (j < 16) {
+				if(data[i].mRed & (1<<(7 - (j%8) ))) pRawData[itemCnt++] = mLogicOne;
+				else pRawData[itemCnt++] = mLogicZero;
+			} else {
+				if(data[i].mBlue & (1<<( 7 - (j%8) ))) pRawData[itemCnt++] = mLogicOne;
+				else pRawData[itemCnt++] = mLogicZero;
+			}
 		}
+	}
 
-	rmt_write_items(channel, items, size * 24, false);
-}
-
-void WS2812B_deInit()
-{
-	rmt_driver_uninstall(channel);
-	free(items);
+	rmt_write_items(mChannel, pRawData, pLedMatrix->getSize() * 24, false);
 }

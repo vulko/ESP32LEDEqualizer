@@ -20,26 +20,40 @@ extern "C" {
 
 void blink_task(void *pvParameter)
 {
-    WS2812B_init(RMT_CHANNEL_0, GPIO_NUM_5, 256);
-    wsRGB_t* data = new wsRGB_t[256];
+    LedController* pLedController = new LedController();
 
-    int cnt = 0;
+    MatrixDimenType x = 0;
+    MatrixDimenType y = 0;
+    MatrixDimenType xCnt = 0;
+    MatrixDimenType yCnt = 0;
     while (true) {
-        for (int i = 0; i < 256; ++i) {
-            data[i].r = cnt == 0 ? 1 : 0;
-            data[i].g = cnt == 1 ? 1 : 0;
-            data[i].b = cnt == 2 ? 1 : 0;
+        for (x = 0; x < 16; ++x) {
+            for (y = 0; y < 16; ++y) {
+                if (x == xCnt && y == yCnt) {
+                    pLedController->setPixelColor(x, y, 1, 0, 0);
+                } else {
+                    pLedController->setPixelColor(x, y, 0, 0, 0);
+                }
+            }
         }
-        cnt++;
-        if (cnt == 3) {
-            cnt = 0;
-        }
-        WS2812B_setLeds(data, 256);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-    delete[] data;
-    WS2812B_deInit();
 
+        ++xCnt;
+        if (xCnt == 16)
+        {
+            xCnt = 0;
+            ++yCnt;
+        }
+        if (yCnt == 16)
+        {
+            xCnt = 0;
+            yCnt = 0;
+        }
+
+        pLedController->update();
+        ets_delay_us(10000);
+    }
+    
+    delete pLedController;
 }
 
 void app_main(void)
@@ -53,5 +67,5 @@ void app_main(void)
     // MicReader* micReader = new MicReader();
     // micReader->start();
 
-    xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE, NULL, 5, NULL);
+    xTaskCreate(&blink_task, "blink_task", configISR_STACK_SIZE, NULL, 2 | portPRIVILEGE_BIT, NULL);
 }

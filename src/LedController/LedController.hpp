@@ -2,32 +2,28 @@
 #define LED_CONTROLLER_H_
 
 #include "driver/rmt.h"
+#include "LedMatrix.hpp"
 
-typedef struct
-{
-	uint8_t g;
-	uint8_t b;
-	uint8_t r;
-}wsRGB_t;
+#define LED_CONTROLLER_TAG "LedController"
 
-/**
- * Init RMT module and allocates space
- * @param channel RMT channel
- * @param gpio GPIO Pin
- * @param size Number of LED's
- */
-void WS2812B_init(rmt_channel_t channel, gpio_num_t gpio, unsigned int size);
 
-/**
- * Writes to the LED
- * @param data
- * @param size Number of LED's - Must not exceed initialization size
- */
-void WS2812B_setLeds(wsRGB_t* data, unsigned int size);
+class LedController {
 
-/**
- * Deinit driver and free memory space
- */
-void WS2812B_deInit(void);
+public:
+    LedController();
+    ~LedController();
+
+    void setPixelColor(MatrixDimenType xPos, MatrixDimenType yPos, ColorType red, ColorType green, ColorType blue);
+    void update();
+
+private:
+    LedMatrix* pLedMatrix;
+
+    rmt_item32_t mLogicZero;
+    rmt_item32_t mLogicOne;
+    rmt_item32_t* pRawData;
+    const rmt_channel_t mChannel = RMT_CHANNEL_0;
+
+};
 
 #endif /* LED_CONTROLLER_H_ */
