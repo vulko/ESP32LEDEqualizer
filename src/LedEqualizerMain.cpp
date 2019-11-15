@@ -6,7 +6,7 @@
 #include "server/wifi/WiFiAP.hpp"
 #include "server/bluetooth/BluetoothAP.hpp"
 #include "mic/MicReader.hpp"
-#include "LedController/LedController.hpp"
+#include "led/controller/LedController.hpp"
 
 
 /* Can run 'make menuconfig' to choose the GPIO to blink,
@@ -20,40 +20,6 @@ extern "C" {
 
 void blink_task(void *pvParameter)
 {
-    LedController* pLedController = new LedController();
-
-    MatrixDimenType x = 0;
-    MatrixDimenType y = 0;
-    MatrixDimenType xCnt = 0;
-    MatrixDimenType yCnt = 0;
-    while (true) {
-        for (x = 0; x < 16; ++x) {
-            for (y = 0; y < 16; ++y) {
-                if (x == xCnt && y == yCnt) {
-                    pLedController->setPixelColor(x, y, 1, 0, 0);
-                } else {
-                    pLedController->setPixelColor(x, y, 0, 0, 0);
-                }
-            }
-        }
-
-        ++xCnt;
-        if (xCnt == 16)
-        {
-            xCnt = 0;
-            ++yCnt;
-        }
-        if (yCnt == 16)
-        {
-            xCnt = 0;
-            yCnt = 0;
-        }
-
-        pLedController->update();
-        ets_delay_us(10000);
-    }
-    
-    delete pLedController;
 }
 
 void app_main(void)
@@ -67,5 +33,11 @@ void app_main(void)
     // MicReader* micReader = new MicReader();
     // micReader->start();
 
-    xTaskCreate(&blink_task, "blink_task", configISR_STACK_SIZE, NULL, 2 | portPRIVILEGE_BIT, NULL);
+    // xTaskCreate(&blink_task, "blink_task", configISR_STACK_SIZE, NULL, 2 | portPRIVILEGE_BIT, NULL);
+    
+    LedController* pLedController = new LedController();
+    while (true) {
+        pLedController->repaint();
+        ets_delay_us(80000);
+    }
 }
