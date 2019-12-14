@@ -18,8 +18,16 @@ extern "C" {
 	void app_main(void);
 }
 
-void blink_task(void *pvParameter)
+void wifi_task(void *pvParameter)
 {
+    WiFiAp* wifiAP = new WiFiAp();
+    wifiAP->start();
+}
+
+void bt_task(void *pvParameter)
+{
+    BluetoothAP* btAP = new BluetoothAP();
+    btAP->start();
 }
 
 void app_main(void)
@@ -27,17 +35,18 @@ void app_main(void)
     // WiFiAp* wifiAP = new WiFiAp();
     // wifiAP->start();
 
-    // BluetoothAP* btAP = new BluetoothAP();
-    // btAP->start();
+    BluetoothAP* btAP = new BluetoothAP();
+    btAP->start();
 
     // MicReader* micReader = new MicReader();
     // micReader->start();
 
-    // xTaskCreate(&blink_task, "blink_task", configISR_STACK_SIZE, NULL, 2 | portPRIVILEGE_BIT, NULL);
+    // xTaskCreate(&wifi_task, "WiFiTask", 2048, NULL, 10, NULL);
+    // xTaskCreate(&bt_task, "BtTask", 2048, NULL, 10, NULL);
     
-    LedController* pLedController = new LedController();
-    while (true) {
-        pLedController->repaint();
-        ets_delay_us(80000);
-    }
+    // LedController* pLedController = new LedController();
+    // while (true) {
+    //     pLedController->repaint();
+    //     ets_delay_us(80000);
+    // }
 }

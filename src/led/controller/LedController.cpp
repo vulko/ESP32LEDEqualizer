@@ -8,7 +8,7 @@
 LedController::LedController()
     : pLedMatrix(new LedMatrix())
 	, pLedDriver(new WS2812bDriver(pLedMatrix->getSize()))
-	, pLedEffectBase(new RippleEffect(pLedMatrix->getWidth(), pLedMatrix->getHeight())) {
+	, pLedEffectBase(new MatrixTestEffect(pLedMatrix->getWidth(), pLedMatrix->getHeight())) {
     // setup RMT driver
     rmt_config_t rmt_tx;
 	memset(&rmt_tx, 0, sizeof(rmt_config_t));
